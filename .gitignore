@@ -134,3 +134,5 @@ dist
 
 # Etc.
 shopData.json
+parsed_steam_sales.json
+steam_sales.html
