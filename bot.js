@@ -1,8 +1,8 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const FortniteAPI = require("fortnite-api-io");
-const cron = require('node-cron');
+const getSteamSales = require('./steamScraper');
+
 require('dotenv').config();
-const fs = require('fs');
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const FORTNITE_API_KEY = process.env.FORTNITE_API_KEY;
@@ -107,47 +107,23 @@ async function sendPaginatedShopMessage(channel) {
     sendPage(currentPage);
 }
 
-// Handle "!check bot" command
+// Handle "!fortnite shop" command
 client.on('messageCreate', async (message) => {
-    if (message.content === '!check bot') {
-        message.channel.send('Bot is Working Fine!');
-    }
-});
-
-// Handle "!check shop" command
-client.on('messageCreate', async (message) => {
-    if (message.content === '!check shop') {
+    if (message.content === '!fortnite shop') {
         try {
-            const shopData = await fortniteAPI.v2.getDailyShop();
-
-            if (!shopData || !shopData.shop || shopData.shop.length === 0) {
-                message.channel.send('Shop data not available right now. Please try again later.');
-                return;
-            }
-
-            const firstEntry = shopData.shop[0];
-            if (!firstEntry || !firstEntry.granted || firstEntry.granted.length === 0) {
-                message.channel.send('The first item in the shop is missing or incomplete.');
-                return;
-            }
-
-            const firstItem = firstEntry.granted[0];
-            const itemName = firstItem.name || 'Unknown Item';
-            const itemPrice = firstEntry.price.finalPrice || 'Unknown Price';
-            const itemImage = firstItem.images?.icon || firstItem.images?.featured || firstItem.images?.full_background || null;
-
-            const embed = new EmbedBuilder()
-                .setTitle(`First Item in Fortnite Shop: ${itemName}`)
-                .setDescription(`Price: ${itemPrice} V-Bucks`)
-                .setThumbnail(itemImage)
-                .setColor(0x1e90ff)
-                .setFooter({ text: 'Made by ChicakElite' });
-
-            message.channel.send({ embeds: [embed] });
+            const channel = message.channel;
+            await sendPaginatedShopMessage(channel);
         } catch (error) {
             console.error('Error fetching shop data:', error);
             message.channel.send('An error occurred while fetching the shop data.');
         }
+    }
+});
+
+// Handle "!check bot" command
+client.on('messageCreate', async (message) => {
+    if (message.content === '!check bot') {
+        message.channel.send('Bot is Working Fine!');
     }
 });
 
@@ -178,13 +154,49 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// Schedule task to send Fortnite shop data daily at 12 PM
-cron.schedule('0 8 * * *', async () => {
-    const channel = client.channels.cache.get(CHANNEL_ID);
-    if (channel) {
-        await sendPaginatedShopMessage(channel);
-    } else {
-        console.error('Channel not found. Make sure the CHANNEL_ID is correct.');
+// Handle "!steam sales" command
+client.on('messageCreate', async (message) => {
+    if (message.content === '!steam sales') {
+        try {
+            // Fetch Steam sales data
+            const salesData = await getSteamSales();
+
+            if (!salesData || salesData.length === 0) {
+                message.channel.send('No Steam sales available at the moment. Please try again later.');
+                return;
+            }
+
+            // Prepare table-like text for the sales
+            const createSalesTable = (startIndex) => {
+                let salesTable = "```";
+                salesTable += "🔥 Steam Sales 🔥\n\n";
+                salesTable += "No  | Title                   | Discount | Original Price | Sale Price\n";
+                salesTable += "----------------------------------------------------------------------\n";
+
+                salesData.slice(startIndex, startIndex + 20).forEach((sale, index) => {
+                    const title = sale.title.length > 20 ? sale.title.substring(0, 20) + '...' : sale.title;
+                    salesTable += `${String(startIndex + index + 1).padEnd(4)}  ${title.padEnd(25)} ${sale.discount.padEnd(9)}    ${sale.originalPrice.padEnd(15)}  ${sale.salePrice}\n`;
+                });
+
+                salesTable += "```\n";
+                return salesTable;
+            };
+
+            // Split into chunks and send messages
+            let startIndex = 0;
+            while (startIndex < salesData.length) {
+                const salesTable = createSalesTable(startIndex);
+                await message.channel.send(salesTable);
+                startIndex += 20;
+            }
+
+            // Add the link to view more sales on Steam after the final batch
+            message.channel.send("[View more sales on Steam](https://store.steampowered.com/search/?sort_by=Price_ASC&supportedlang=english&specials=1&ndl=1)");
+
+        } catch (error) {
+            console.error('Error fetching Steam sales:', error);
+            message.channel.send('An error occurred while fetching the Steam sales.');
+        }
     }
 });
 
