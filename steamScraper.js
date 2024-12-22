@@ -9,35 +9,35 @@ async function getSteamSales() {
         const html = response.data;
 
         // Save the raw HTML response to a file
-        fs.writeFileSync('steam_sales.html', html, 'utf-8');
-        console.log(`HTML response has been written to steam_sales.html`);
+        // fs.writeFileSync('steam_sales.html', html, 'utf-8');
+        // console.log(`HTML response has been written to steam_sales.html`);
 
         const $ = cheerio.load(html);
         const sales = [];
 
         $('.search_result_row').each((i, el) => {
-            const title = $(el).find('.title').text().trim();
-            const discount = $(el).find('.discount_pct').text().trim();
-            const originalPrice = $(el).find('.discount_original_price').text().trim();
-            const salePrice = $(el).find('.discount_final_price').text().trim();
-            const link = $(el).attr('href');
-
+            const title = $(el).find('.title').text().trim() || 'Unknown Title';
+            const discount = $(el).find('.discount_pct').text().trim() || '0%';
+            const originalPrice = $(el).find('.discount_original_price').text().trim() || 'N/A';
+            const salePrice = $(el).find('.discount_final_price').text().trim() || 'N/A';
+            const link = $(el).attr('href') || '#';
+        
             sales.push({
                 title,
                 discount,
-                originalPrice: originalPrice !== salePrice ? originalPrice : 'N/A',
+                originalPrice,
                 salePrice,
-                link
+                link,
             });
         });
 
         // Write the sales data to a JSON file
-        fs.writeFileSync('parsed_steam_sales.json', JSON.stringify(sales, null, 2), 'utf-8');
-        console.log(`Sales data has been written to parsed_steam_sales.json`);
+        // fs.writeFileSync('parsed_steam_sales.json', JSON.stringify(sales, null, 2), 'utf-8');
+        // console.log(`Sales data has been written to parsed_steam_sales.json`);
+        return sales
     } catch (error) {
         console.error('Error parsing Steam sales:', error.message);
     }
 }
 
-// Fetch and write the sales
-getSteamSales();
+module.exports = getSteamSales;
