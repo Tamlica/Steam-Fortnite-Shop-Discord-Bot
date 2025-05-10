@@ -154,55 +154,65 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Utility function to send Steam sales to a channel
+async function sendSteamSales(channel) {
+    try {
+        const salesData = await getSteamSales();
+        if (!salesData || salesData.length === 0) {
+            channel.send('No Steam sales available at the moment. Please try again later.');
+            return;
+        }
+        const createSalesTable = (startIndex) => {
+            let salesTable = "```";
+            salesTable += "🔥 Steam Sales 🔥\n\n";
+            salesTable += "No  | Title                   | Discount | Original Price | Sale Price\n";
+            salesTable += "----------------------------------------------------------------------\n";
+            salesData.slice(startIndex, startIndex + 20).forEach((sale, index) => {
+                const title = sale.title.length > 20 ? sale.title.substring(0, 20) + '...' : sale.title;
+                salesTable += `${String(startIndex + index + 1).padEnd(4)}  ${title.padEnd(25)} ${sale.discount.padEnd(9)}    ${sale.originalPrice.padEnd(15)}  ${sale.salePrice}\n`;
+            });
+            salesTable += "```\n";
+            return salesTable;
+        };
+        let startIndex = 0;
+        while (startIndex < salesData.length) {
+            const salesTable = createSalesTable(startIndex);
+            await channel.send(salesTable);
+            startIndex += 20;
+        }
+        await channel.send("[View more sales on Steam](https://store.steampowered.com/search/?sort_by=Price_ASC&supportedlang=english&specials=1&ndl=1)");
+    } catch (error) {
+        console.error('Error fetching Steam sales:', error);
+        channel.send('An error occurred while fetching the Steam sales.');
+    }
+}
+
 // Handle "!steam sales" command
 client.on('messageCreate', async (message) => {
     if (message.content === '!steam sales') {
-        try {
-            // Fetch Steam sales data
-            const salesData = await getSteamSales();
-
-            if (!salesData || salesData.length === 0) {
-                message.channel.send('No Steam sales available at the moment. Please try again later.');
-                return;
-            }
-
-            // Prepare table-like text for the sales
-            const createSalesTable = (startIndex) => {
-                let salesTable = "```";
-                salesTable += "🔥 Steam Sales 🔥\n\n";
-                salesTable += "No  | Title                   | Discount | Original Price | Sale Price\n";
-                salesTable += "----------------------------------------------------------------------\n";
-
-                salesData.slice(startIndex, startIndex + 20).forEach((sale, index) => {
-                    const title = sale.title.length > 20 ? sale.title.substring(0, 20) + '...' : sale.title;
-                    salesTable += `${String(startIndex + index + 1).padEnd(4)}  ${title.padEnd(25)} ${sale.discount.padEnd(9)}    ${sale.originalPrice.padEnd(15)}  ${sale.salePrice}\n`;
-                });
-
-                salesTable += "```\n";
-                return salesTable;
-            };
-
-            // Split into chunks and send messages
-            let startIndex = 0;
-            while (startIndex < salesData.length) {
-                const salesTable = createSalesTable(startIndex);
-                await message.channel.send(salesTable);
-                startIndex += 20;
-            }
-
-            // Add the link to view more sales on Steam after the final batch
-            message.channel.send("[View more sales on Steam](https://store.steampowered.com/search/?sort_by=Price_ASC&supportedlang=english&specials=1&ndl=1)");
-
-        } catch (error) {
-            console.error('Error fetching Steam sales:', error);
-            message.channel.send('An error occurred while fetching the Steam sales.');
-        }
+        await sendSteamSales(message.channel);
     }
 });
 
 // Bot ready event
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
+
+    // Schedule daily Steam sales post at adjustable time via STEAM_SALES_CRON
+    const cron = require('node-cron');
+    const STEAM_SALES_CRON = process.env.STEAM_SALES_CRON || '0 9 * * *';
+    cron.schedule(STEAM_SALES_CRON, async () => {
+        try {
+            const channel = await client.channels.fetch(CHANNEL_ID);
+            if (!channel) {
+                console.error('Steam sales cron: Channel not found!');
+                return;
+            }
+            await sendSteamSales(channel);
+        } catch (error) {
+            console.error('Steam sales cron error:', error);
+        }
+    });
 });
 
 // Log in to Discord
