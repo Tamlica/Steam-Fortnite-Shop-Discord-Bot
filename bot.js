@@ -198,9 +198,13 @@ client.on('messageCreate', async (message) => {
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
 
+    console.log(`Channel ID: ${CHANNEL_ID}`);
+
+    const STEAM_SALES_CRON = process.env.STEAM_SALES_CRON || '5 0 * * *';
+    console.log(`Steam sales cron: ${STEAM_SALES_CRON}`);
+
     // Schedule daily Steam sales post at adjustable time via STEAM_SALES_CRON
     const cron = require('node-cron');
-    const STEAM_SALES_CRON = process.env.STEAM_SALES_CRON || '0 9 * * *';
     cron.schedule(STEAM_SALES_CRON, async () => {
         try {
             const channel = await client.channels.fetch(CHANNEL_ID);
@@ -212,6 +216,8 @@ client.once('ready', () => {
         } catch (error) {
             console.error('Steam sales cron error:', error);
         }
+    }, {
+        timezone: "Asia/Jakarta"
     });
 });
 
