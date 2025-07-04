@@ -4,7 +4,7 @@ const fs = require('fs');
 
 async function getSteamSales() {
     try {
-        const url = 'https://store.steampowered.com/search/?sort_by=Price_ASC&supportedlang=english&specials=1&ndl=1';
+        const url = 'https://store.steampowered.com/search/?category1=998%2C996&os=win&specials=1&filter=topsellers&ndl=1';
         const response = await axios.get(url);
         const html = response.data;
 

@@ -180,7 +180,7 @@ async function sendSteamSales(channel) {
             await channel.send(salesTable);
             startIndex += 20;
         }
-        await channel.send("[View more sales on Steam](https://store.steampowered.com/search/?sort_by=Price_ASC&supportedlang=english&specials=1&ndl=1)");
+        await channel.send("[View more sales on Steam](https://store.steampowered.com/search/?category1=998%2C996&os=win&specials=1&filter=topsellers&ndl=1)");
     } catch (error) {
         console.error('Error fetching Steam sales:', error);
         channel.send('An error occurred while fetching the Steam sales.');
